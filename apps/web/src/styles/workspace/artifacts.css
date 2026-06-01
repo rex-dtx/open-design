@@ -574,6 +574,18 @@
 .section-head .hint { margin-top: 2px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field-label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.memory-model-inline__select {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+}
+
+.composer-byok-image-model__select {
+  min-width: 220px;
+  flex: 1 1 240px;
+  max-width: 320px;
+}
+
 .field-required {
   margin-left: 4px;
   color: var(--red);
@@ -1508,6 +1520,9 @@
 
 .model-select-searchable {
   position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 .model-select-searchable.is-open {
   z-index: 1400;
@@ -1525,11 +1540,13 @@
   overflow: hidden;
 }
 .model-select-searchable__search-row {
-  padding: 8px;
+  padding: 0;
   border-bottom: 1px solid var(--border);
 }
 .model-select-searchable__input {
+  display: block;
   width: 100%;
+  box-sizing: border-box;
 }
 .model-select-searchable__list {
   max-height: 280px;

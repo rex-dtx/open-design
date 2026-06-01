@@ -2259,6 +2259,8 @@ export function SettingsDialog({
                   searchPlaceholder={t('designs.searchPlaceholder')}
                   searchInputTestId={`settings-agent-model-search-${selected.id}`}
                   popoverTestId={`settings-agent-model-popover-${selected.id}`}
+                  minSearchableOptions={5}
+                  popoverMinWidth={340}
                   models={selected.models!}
                   onChange={(nextValue) => {
                     if (nextValue === CUSTOM_MODEL_SENTINEL) {

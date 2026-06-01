@@ -115,7 +115,7 @@ import {
   AMR_LOGIN_POLL_INTERVAL_MS,
   amrLoginPollOutcome,
 } from './amrLoginPolling';
-import { renderModelOptions } from './modelOptions';
+import { SearchableModelSelect } from './modelOptions';
 
 // The topbar chips (GitHub star, model switcher, Use everywhere)
 // collapse into the settings dropdown when the viewport gets
@@ -868,7 +868,7 @@ function OnboardingView({
     apiProtocol,
     config.baseUrl.trim().replace(/\/+$/, ''),
     config.apiKey.trim(),
-    config.apiVersion?.trim() ?? '',
+    apiProtocol === 'azure' ? (config.apiVersion?.trim() ?? '') : '',
   ].join('\n');
   const canTestProvider =
     Boolean(config.apiKey.trim()) &&
@@ -2053,13 +2053,24 @@ function OnboardingCliSetupPanel({
         </div>
       ) : null}
       {selectedAgent && modelOptions.length > 0 ? (
-        <OnboardingDropdown
-          label={`${t('settings.modelPicker')} · ${selectedAgent.name}`}
-          placeholder={t('settings.modelSourceFallback')}
-          value={selectedModel}
-          options={modelOptions}
-          onChange={onSelectModel}
-        />
+        <label className="onboarding-view__model-picker">
+          <span className="onboarding-view__model-label">
+            {`${t('settings.modelPicker')} · ${selectedAgent.name}`}
+          </span>
+          <span className="onboarding-view__model-select-wrap">
+            <SearchableModelSelect
+              className="inline-switcher__select onboarding-view__model-select"
+              value={selectedModel}
+              onChange={onSelectModel}
+              models={modelOptions.map((option) => ({ id: option.value, label: option.label }))}
+              searchPlaceholder={t('newproj.modelSearch')}
+              searchInputTestId="onboarding-cli-model-search"
+              popoverTestId="onboarding-cli-model-popover"
+              minSearchableOptions={5}
+              popoverMinWidth={340}
+            />
+          </span>
+        </label>
       ) : null}
     </div>
   );
@@ -2095,16 +2106,21 @@ function OnboardingAmrModelSelect({
         </span>
       </span>
       <span className="onboarding-view__model-select-wrap">
-        <select
+        <SearchableModelSelect
+          className="inline-switcher__select onboarding-view__model-select"
           value={selectedModel}
-          onChange={(event) => onSelectModel(event.target.value)}
-        >
-          {renderModelOptions(displayModels)}
-        </select>
-        <Icon
-          name="chevron-down"
-          size={12}
-          className="onboarding-view__model-select-chevron"
+          onChange={onSelectModel}
+          models={displayModels}
+          additionalOptions={
+            selectedModel && !displayModels.some((model) => model.id === selectedModel)
+              ? [{ value: selectedModel, label: selectedModel }]
+              : undefined
+          }
+          searchPlaceholder={t('newproj.modelSearch')}
+          searchInputTestId="onboarding-amr-model-search"
+          popoverTestId="onboarding-amr-model-popover"
+          minSearchableOptions={5}
+          popoverMinWidth={340}
         />
       </span>
     </label>
@@ -2281,14 +2297,27 @@ function OnboardingByokSetupPanel({
           />
         </label>
         {modelOptions.length > 0 ? (
-          <OnboardingDropdown
-            label={t('settings.model')}
-            placeholder={selectedProvider?.model ?? 'claude-sonnet-4-5'}
-            value={model}
-            options={modelOptions}
-            onChange={onModelChange}
-            placement="top"
-          />
+          <label className="onboarding-view__model-picker onboarding-view__setup-model-picker">
+            <span className="onboarding-view__model-label">{t('settings.model')}</span>
+            <span className="onboarding-view__model-select-wrap">
+              <SearchableModelSelect
+                className="inline-switcher__select onboarding-view__model-select"
+                value={model}
+                onChange={onModelChange}
+                models={modelOptions.map((option) => ({ id: option.value, label: option.label }))}
+                searchPlaceholder={t('newproj.modelSearch')}
+                searchInputTestId="onboarding-byok-model-search"
+                popoverTestId="onboarding-byok-model-popover"
+                minSearchableOptions={5}
+                popoverMinWidth={340}
+                additionalOptions={
+                  model && !modelOptions.some((option) => option.value === model)
+                    ? [{ value: model, label: model }]
+                    : undefined
+                }
+              />
+            </span>
+          </label>
         ) : (
           <label className="onboarding-view__inline-field">
             <span>{t('settings.model')}</span>

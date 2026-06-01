@@ -39,6 +39,41 @@ test('onboarding lets AMR Cloud sign in and continue after the login poll succee
   await expect(page.getByRole('button', { name: /Continue/i })).toBeVisible({ timeout: 10_000 });
 });
 
+test('onboarding Local CLI card lets the user search agent models before continuing', async ({ page }) => {
+  const config = await wireOnboardingMocks(page, {
+    amrAvailable: false,
+    initialLoggedIn: false,
+    codexModels: [
+      { id: 'gpt-5.4-mini', label: 'gpt-5.4-mini' },
+      { id: 'gpt-5.5', label: 'gpt-5.5' },
+      { id: 'o3', label: 'o3' },
+      { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
+      { id: 'glm-5', label: 'GLM 5' },
+      { id: 'qwen3-235b', label: 'Qwen3 235B' },
+      { id: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'kimi-k2.6', label: 'Kimi K2.6' },
+    ],
+  });
+
+  await page.addInitScript(
+    ({ key, value }) => window.localStorage.setItem(key, JSON.stringify(value)),
+    { key: STORAGE_KEY, value: config },
+  );
+
+  await gotoOnboarding(page);
+
+  await page.getByRole('button', { name: /Local coding agent/i }).click();
+  const modelPicker = page.getByRole('combobox', { name: /Model/i });
+  await modelPicker.click();
+  const popover = page.getByTestId('onboarding-cli-model-popover');
+  await popover.getByTestId('onboarding-cli-model-search').fill('glm');
+  await popover.getByRole('option', { name: 'GLM 5' }).click();
+
+  await expect(modelPicker).toContainText('GLM 5');
+  await expect(page.getByRole('button', { name: /Continue/i })).toBeVisible();
+});
+
 test('onboarding falls back to Local CLI when AMR is unavailable', async ({ page }) => {
   const config = await wireOnboardingMocks(page, {
     amrAvailable: false,
@@ -77,12 +112,48 @@ test('onboarding recovers from a transient AMR status failure and still continue
   await expect(page.getByRole('button', { name: /Continue/i })).toBeVisible({ timeout: 12_000 });
 });
 
+test('onboarding AMR card lets the user search live models before continuing', async ({ page }) => {
+  const config = await wireOnboardingMocks(page, {
+    amrAvailable: true,
+    initialLoggedIn: true,
+    amrModels: [
+      { id: 'gpt-5.4-mini', label: 'gpt-5.4-mini' },
+      { id: 'gpt-5.5', label: 'gpt-5.5' },
+      { id: 'gpt-5', label: 'gpt-5' },
+      { id: 'o3', label: 'o3' },
+      { id: 'o4-mini', label: 'o4-mini' },
+      { id: 'deepseek-v3.2', label: 'DeepSeek V3.2' },
+      { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
+      { id: 'glm-5', label: 'GLM 5' },
+      { id: 'qwen3-235b', label: 'Qwen3 235B' },
+    ],
+  });
+
+  await page.addInitScript(
+    ({ key, value }) => window.localStorage.setItem(key, JSON.stringify(value)),
+    { key: STORAGE_KEY, value: config },
+  );
+
+  await gotoOnboarding(page);
+
+  const modelPicker = page.getByRole('combobox', { name: /Model/i });
+  await modelPicker.click();
+  const popover = page.getByTestId('onboarding-amr-model-popover');
+  await popover.getByTestId('onboarding-amr-model-search').fill('glm');
+  await popover.getByRole('option', { name: 'GLM 5' }).click();
+
+  await expect(modelPicker).toContainText('GLM 5');
+  await expect(page.getByRole('button', { name: /Continue/i })).toBeVisible();
+});
+
 async function wireOnboardingMocks(
   page: Page,
   options: {
     amrAvailable: boolean;
     initialLoggedIn: boolean;
     failFirstStatusPollAfterLogin?: boolean;
+    amrModels?: Array<{ id: string; label: string }>;
+    codexModels?: Array<{ id: string; label: string }>;
   },
 ): Promise<OnboardingConfig> {
   const config: OnboardingConfig = {
@@ -139,7 +210,7 @@ async function wireOnboardingMocks(
                 bin: 'vela',
                 available: true,
                 version: '1.0.0',
-                models: [{ id: 'default', label: 'Default' }],
+                models: options.amrModels ?? [{ id: 'default', label: 'Default' }],
               }]
             : []),
           {
@@ -148,7 +219,7 @@ async function wireOnboardingMocks(
             bin: 'codex',
             available: true,
             version: 'test',
-            models: [{ id: 'default', label: 'Default' }],
+            models: options.codexModels ?? [{ id: 'default', label: 'Default' }],
           },
         ],
       },

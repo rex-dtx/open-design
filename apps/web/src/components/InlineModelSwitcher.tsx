@@ -30,6 +30,7 @@ import {
   notifyAmrLoginStatusChanged,
 } from './amrLoginPolling';
 import { normalizeAgentModelChoice } from './agentModelSelection';
+import { fetchProviderModels } from '../providers/provider-models';
 import { SearchableModelSelect } from './modelOptions';
 
 interface Props {
@@ -116,6 +117,7 @@ export function InlineModelSwitcher({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [amrStatus, setAmrStatus] = useState<VelaLoginStatus | null>(null);
+  const [discoveredProviderModels, setDiscoveredProviderModels] = useState<Record<string, ProviderModelOption[]>>({});
   const [amrLoginPending, setAmrLoginPending] = useState(false);
   const [amrLoginError, setAmrLoginError] = useState(false);
   const [amrReminderSeen, setAmrReminderSeen] = useState(readAmrReminderSeen);
@@ -354,7 +356,7 @@ export function InlineModelSwitcher({
     apiProtocol,
     config.baseUrl.trim().replace(/\/+$/, ''),
     config.apiKey.trim(),
-    config.apiVersion?.trim() ?? '',
+    apiProtocol === 'azure' ? (config.apiVersion?.trim() ?? '') : '',
   ].join('\n');
   const providerForProtocol = useMemo(
     () =>
@@ -367,7 +369,7 @@ export function InlineModelSwitcher({
       ) ?? KNOWN_PROVIDERS.find((p) => p.protocol === apiProtocol),
     [apiProtocol, config.apiProviderBaseUrl],
   );
-  const fetchedProviderModels = providerModelsCache?.[providerModelsInputKey] ?? [];
+  const fetchedProviderModels = providerModelsCache?.[providerModelsInputKey] ?? discoveredProviderModels[providerModelsInputKey] ?? [];
   const apiModelOptions = useMemo(() => {
     const discovered = fetchedProviderModels.map((model) => model.id);
     const staticOptions = providerForProtocol?.models ?? [];
@@ -379,6 +381,38 @@ export function InlineModelSwitcher({
     () => apiModelOptions.map((id) => ({ id, label: id })),
     [apiModelOptions],
   );
+
+  useEffect(() => {
+    if (!open || config.mode !== 'api') return;
+    if (fetchedProviderModels.length > 0) return;
+    if (apiProtocol === 'azure' || apiProtocol === 'ollama') return;
+    const baseUrl = config.baseUrl?.trim() ?? '';
+    const apiKey = config.apiKey?.trim() ?? '';
+    if (!baseUrl || !apiKey) return;
+    let cancelled = false;
+    void fetchProviderModels({
+      protocol: apiProtocol,
+      baseUrl,
+      apiKey,
+    }).then((result) => {
+      if (cancelled || !result.ok || !result.models?.length) return;
+      setDiscoveredProviderModels((current) => ({
+        ...current,
+        [providerModelsInputKey]: result.models ?? [],
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    config.mode,
+    apiProtocol,
+    config.baseUrl,
+    config.apiKey,
+    providerModelsInputKey,
+    fetchedProviderModels.length,
+  ]);
 
   // Chip text — keep it tight so the pill doesn't wrap on small viewports.
   // CLI: "Claude · Sonnet 4.5"; BYOK: "Anthropic · sonnet-4.5".
@@ -642,6 +676,7 @@ export function InlineModelSwitcher({
                     data-testid="inline-model-switcher-agent-model"
                     searchInputTestId="inline-model-switcher-agent-model-search"
                     popoverTestId="inline-model-switcher-agent-model-popover"
+                    minSearchableOptions={5}
                     searchPlaceholder={t('designs.searchPlaceholder')}
                     aria-label={t('inlineSwitcher.modelLabel')}
                     models={currentAgent.models}
